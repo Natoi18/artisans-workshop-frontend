@@ -1,5 +1,6 @@
 "use client"
 
+import { useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -13,6 +14,85 @@ interface ArtisanProfileProps {
 }
 
 export function ArtisanProfile({ artisanId, onBack }: ArtisanProfileProps) {
+  // Pi payment handler
+  const handlePiPayment = useCallback(async (amount: number, memo: string) => {
+    if (!window.Pi) {
+      alert("Pi SDK not available. Open in Pi Browser.")
+      return
+    }
+
+    try {
+      const payment = await window.Pi.createPayment(
+        {
+          amount,
+          memo,
+          metadata: { artisanId },
+        },
+        {
+          sandbox: true, // testing only
+          onReadyForServerApproval: async (paymentId: string) => {
+            await fetch(
+              `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/pi/approve`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ paymentId }),
+              }
+            )
+          },
+          onReadyForServerCompletion: async (paymentId: string, txid: string) => {
+            await fetch(
+              `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/pi/complete`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ paymentId, txid }),
+              }
+            )
+          },
+          onCancel: () => console.log("Payment cancelled"),
+          onError: (error: any) => console.error("Payment error", error),
+        }
+      )
+      console.log("Payment created:", payment)
+    } catch (err) {
+      console.error(err)
+    }
+  }, [artisanId])
+
+  // Sample data
+  const videos = [
+    { title: "Pottery Wheel Basics", duration: "18:45", price: 15, views: 2400 },
+    { title: "Hand Building Techniques", duration: "22:30", price: 20, views: 1850 },
+    { title: "Glazing & Firing Process", duration: "25:15", price: 25, views: 1620 },
+  ]
+
+  const workshops = [
+    { title: "Complete Pottery Masterclass", students: 156, price: 50, date: "Dec 20, 2024" },
+    { title: "Advanced Wheel Throwing", students: 89, price: 65, date: "Dec 22, 2024" },
+  ]
+
+  const reviews = [
+    {
+      name: "John Smith",
+      rating: 5,
+      comment: "Excellent teacher! Very patient and detailed explanations.",
+      date: "2 days ago",
+    },
+    {
+      name: "Lisa Wang",
+      rating: 5,
+      comment: "Best pottery course I've taken. Maria is incredibly skilled.",
+      date: "5 days ago",
+    },
+    {
+      name: "Mike Johnson",
+      rating: 4,
+      comment: "Great content, learned a lot about traditional techniques.",
+      date: "1 week ago",
+    },
+  ]
+
   return (
     <div className="min-h-screen bg-background pb-6">
       {/* Header */}
@@ -32,10 +112,7 @@ export function ArtisanProfile({ artisanId, onBack }: ArtisanProfileProps) {
             <Avatar className="w-20 h-20 border-2 border-primary">
               <AvatarImage src="/placeholder-user.jpg" alt={artisanId} />
               <AvatarFallback className="bg-primary/10 text-primary font-bold text-xl">
-                {artisanId
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")}
+                {artisanId.split(" ").map((n) => n[0]).join("")}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 space-y-2">
@@ -77,7 +154,10 @@ export function ArtisanProfile({ artisanId, onBack }: ArtisanProfileProps) {
               <MessageSquare className="w-4 h-4 mr-2" />
               Message
             </Button>
-            <Button className="flex-1 bg-secondary text-secondary-foreground hover:bg-secondary/90">
+            <Button
+              className="flex-1 bg-secondary text-secondary-foreground hover:bg-secondary/90"
+              onClick={() => handlePiPayment(10, "Book artisan lesson")}
+            >
               <Coins className="w-4 h-4 mr-2" />
               Book Lesson
             </Button>
@@ -87,9 +167,9 @@ export function ArtisanProfile({ artisanId, onBack }: ArtisanProfileProps) {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: "Videos", value: "42", icon: Video },
-            { label: "Workshops", value: "18", icon: PlayCircle },
-            { label: "Rating", value: "4.9", icon: Star },
+            { label: "Videos", value: videos.length, icon: Video },
+            { label: "Workshops", value: workshops.length, icon: PlayCircle },
+            { label: "Rating", value: 4.9, icon: Star },
           ].map((stat, idx) => {
             const Icon = stat.icon
             return (
@@ -102,7 +182,7 @@ export function ArtisanProfile({ artisanId, onBack }: ArtisanProfileProps) {
           })}
         </div>
 
-        {/* Content Tabs */}
+        {/* Tabs */}
         <Tabs defaultValue="videos" className="w-full">
           <TabsList className="w-full grid grid-cols-3">
             <TabsTrigger value="videos">Videos</TabsTrigger>
@@ -110,12 +190,9 @@ export function ArtisanProfile({ artisanId, onBack }: ArtisanProfileProps) {
             <TabsTrigger value="reviews">Reviews</TabsTrigger>
           </TabsList>
 
+          {/* Videos Tab */}
           <TabsContent value="videos" className="space-y-3 mt-4">
-            {[
-              { title: "Pottery Wheel Basics", duration: "18:45", price: 15, views: 2400 },
-              { title: "Hand Building Techniques", duration: "22:30", price: 20, views: 1850 },
-              { title: "Glazing & Firing Process", duration: "25:15", price: 25, views: 1620 },
-            ].map((video, idx) => (
+            {videos.map((video, idx) => (
               <Card key={idx} className="p-3">
                 <div className="flex gap-3">
                   <div className="relative w-32 shrink-0">
@@ -135,7 +212,13 @@ export function ArtisanProfile({ artisanId, onBack }: ArtisanProfileProps) {
                         <Coins className="w-4 h-4" />
                         <span className="font-semibold text-sm">{video.price}π</span>
                       </div>
-                      <Button size="sm" className="h-7 text-xs">
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() =>
+                          handlePiPayment(video.price, `Purchase video: ${video.title}`)
+                        }
+                      >
                         Watch Now
                       </Button>
                     </div>
@@ -145,11 +228,9 @@ export function ArtisanProfile({ artisanId, onBack }: ArtisanProfileProps) {
             ))}
           </TabsContent>
 
+          {/* Workshops Tab */}
           <TabsContent value="workshops" className="space-y-3 mt-4">
-            {[
-              { title: "Complete Pottery Masterclass", students: 156, price: 50, date: "Dec 20, 2024" },
-              { title: "Advanced Wheel Throwing", students: 89, price: 65, date: "Dec 22, 2024" },
-            ].map((workshop, idx) => (
+            {workshops.map((workshop, idx) => (
               <Card key={idx} className="p-4 space-y-3">
                 <div className="space-y-2">
                   <h4 className="font-semibold">{workshop.title}</h4>
@@ -169,41 +250,27 @@ export function ArtisanProfile({ artisanId, onBack }: ArtisanProfileProps) {
                     <Coins className="w-5 h-5" />
                     <span className="font-bold text-lg">{workshop.price}π</span>
                   </div>
-                  <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90">Enroll Now</Button>
+                  <Button
+                    className="bg-secondary text-secondary-foreground hover:bg-secondary/90"
+                    onClick={() =>
+                      handlePiPayment(workshop.price, `Enroll in workshop: ${workshop.title}`)
+                    }
+                  >
+                    Enroll Now
+                  </Button>
                 </div>
               </Card>
             ))}
           </TabsContent>
 
+          {/* Reviews Tab */}
           <TabsContent value="reviews" className="space-y-3 mt-4">
-            {[
-              {
-                name: "John Smith",
-                rating: 5,
-                comment: "Excellent teacher! Very patient and detailed explanations.",
-                date: "2 days ago",
-              },
-              {
-                name: "Lisa Wang",
-                rating: 5,
-                comment: "Best pottery course I've taken. Maria is incredibly skilled.",
-                date: "5 days ago",
-              },
-              {
-                name: "Mike Johnson",
-                rating: 4,
-                comment: "Great content, learned a lot about traditional techniques.",
-                date: "1 week ago",
-              },
-            ].map((review, idx) => (
+            {reviews.map((review, idx) => (
               <Card key={idx} className="p-4 space-y-3">
                 <div className="flex items-start gap-3">
                   <Avatar className="w-10 h-10">
                     <AvatarFallback className="bg-muted text-foreground text-sm">
-                      {review.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")}
+                      {review.name.split(" ").map((n) => n[0]).join("")}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 space-y-1">
