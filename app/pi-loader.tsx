@@ -15,9 +15,13 @@ export default function PiLoader() {
         window.Pi.init({
           version: "2.0",
           sandbox: true,
-          scope: ["payments"], // ✅ REQUIRED
+          scope: ["payments"],
         });
-        console.log("✅ Pi SDK initialized with payments scope (sandbox)");
+
+        // 🔔 Notify app Pi is ready
+        window.dispatchEvent(new Event("pi-ready"));
+
+        console.log("✅ Pi SDK ready");
       } else {
         setTimeout(initPi, 300);
       }
