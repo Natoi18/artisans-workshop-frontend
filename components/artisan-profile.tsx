@@ -1,100 +1,89 @@
-"use client"
+"use client";
 
-import { useCallback } from "react"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowLeft, Star, MapPin, Users, Video, MessageSquare, Coins, PlayCircle, Clock, Award } from "lucide-react"
+import { useState, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, Star, MapPin, Users, Video, MessageSquare, Coins, PlayCircle, Clock, Award } from "lucide-react";
+
 
 interface ArtisanProfileProps {
-  artisanId: string
-  onBack: () => void
+  artisanId: string;
+  onBack: () => void;
 }
 
 export function ArtisanProfile({ artisanId, onBack }: ArtisanProfileProps) {
-  // Pi payment handler
-  const handlePiPayment = useCallback(async (amount: number, memo: string) => {
-    if (!window.Pi) {
-      alert("Pi SDK not available. Open in Pi Browser.")
-      return
-    }
+  const [piReady, setPiReady] = useState(false);
 
-    try {
-      const payment = await window.Pi.createPayment(
-        {
-          amount,
-          memo,
-          metadata: { artisanId },
-        },
-        {
-          sandbox: true, // testing only
-          onReadyForServerApproval: async (paymentId: string) => {
-            await fetch(
-              `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/pi/approve`,
-              {
+  // Pi payment handler
+  const handlePiPayment = useCallback(
+    async (amount: number, memo: string) => {
+      if (!piReady || !window.Pi) {
+        alert("Pi SDK not ready yet. Please wait a moment or open in Pi Browser.");
+        return;
+      }
+
+      try {
+        const payment = await window.Pi.createPayment(
+          {
+            amount,
+            memo,
+            metadata: { artisanId },
+          },
+          {
+            sandbox: true,
+            onReadyForServerApproval: async (paymentId: string) => {
+              await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/pi/approve`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ paymentId }),
-              }
-            )
-          },
-          onReadyForServerCompletion: async (paymentId: string, txid: string) => {
-            await fetch(
-              `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/pi/complete`,
-              {
+              });
+            },
+            onReadyForServerCompletion: async (paymentId: string, txid: string) => {
+              await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/pi/complete`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ paymentId, txid }),
-              }
-            )
-          },
-          onCancel: () => console.log("Payment cancelled"),
-          onError: (error: any) => console.error("Payment error", error),
-        }
-      )
-      console.log("Payment created:", payment)
-    } catch (err) {
-      console.error(err)
-    }
-  }, [artisanId])
+              });
+            },
+            onCancel: () => console.log("Payment cancelled"),
+            onError: (error: any) => console.error("Payment error", error),
+          }
+        );
+
+        console.log("Payment created:", payment);
+      } catch (err) {
+        console.error(err);
+      }
+    },
+    [piReady, artisanId]
+  );
 
   // Sample data
   const videos = [
     { title: "Pottery Wheel Basics", duration: "18:45", price: 15, views: 2400 },
     { title: "Hand Building Techniques", duration: "22:30", price: 20, views: 1850 },
     { title: "Glazing & Firing Process", duration: "25:15", price: 25, views: 1620 },
-  ]
+  ];
 
   const workshops = [
     { title: "Complete Pottery Masterclass", students: 156, price: 50, date: "Dec 20, 2024" },
     { title: "Advanced Wheel Throwing", students: 89, price: 65, date: "Dec 22, 2024" },
-  ]
+  ];
 
   const reviews = [
-    {
-      name: "John Smith",
-      rating: 5,
-      comment: "Excellent teacher! Very patient and detailed explanations.",
-      date: "2 days ago",
-    },
-    {
-      name: "Lisa Wang",
-      rating: 5,
-      comment: "Best pottery course I've taken. Maria is incredibly skilled.",
-      date: "5 days ago",
-    },
-    {
-      name: "Mike Johnson",
-      rating: 4,
-      comment: "Great content, learned a lot about traditional techniques.",
-      date: "1 week ago",
-    },
-  ]
+    { name: "John Smith", rating: 5, comment: "Excellent teacher! Very patient and detailed explanations.", date: "2 days ago" },
+    { name: "Lisa Wang", rating: 5, comment: "Best pottery course I've taken. Maria is incredibly skilled.", date: "5 days ago" },
+    { name: "Mike Johnson", rating: 4, comment: "Great content, learned a lot about traditional techniques.", date: "1 week ago" },
+  ];
 
   return (
     <div className="min-h-screen bg-background pb-6">
+      {/* Load Pi SDK */}
+  
+
       {/* Header */}
       <header className="sticky top-0 z-50 bg-card border-b border-border">
         <div className="flex items-center gap-3 px-4 py-3">
@@ -171,14 +160,14 @@ export function ArtisanProfile({ artisanId, onBack }: ArtisanProfileProps) {
             { label: "Workshops", value: workshops.length, icon: PlayCircle },
             { label: "Rating", value: 4.9, icon: Star },
           ].map((stat, idx) => {
-            const Icon = stat.icon
+            const Icon = stat.icon;
             return (
               <Card key={idx} className="p-4 text-center space-y-2">
                 <Icon className="w-6 h-6 mx-auto text-primary" />
                 <div className="font-bold text-2xl">{stat.value}</div>
                 <div className="text-xs text-muted-foreground">{stat.label}</div>
               </Card>
-            )
+            );
           })}
         </div>
 
@@ -295,5 +284,5 @@ export function ArtisanProfile({ artisanId, onBack }: ArtisanProfileProps) {
         </Tabs>
       </div>
     </div>
-  )
+  );
 }
